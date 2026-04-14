@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceTrack — Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f14; 
+    --surface: rgba(18, 24, 33, 0.6); 
+    --surface-2: rgba(24, 33, 44, 0.6);
+    --border: rgba(255,255,255,0.08); 
+    --accent: #00e5ff;
+    --accent-dim: rgba(0,229,255,0.12); 
+    --accent-glow: rgba(0,229,255,0.35);
+    --text: #e6f1ff; 
+    --muted: #7f8fa4; 
+    --sidebar-w: 240px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; min-height: 100vh; display: flex; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.013) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.013) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+  .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100; backdrop-filter: blur(12px); }
+
+  .sidebar-logo { padding: 28px 24px 24px; border-bottom: 1px solid var(--border); }
+  .logo-mark { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo-text { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); }
+  .logo-text span { color: var(--accent); }
+
+  .sidebar-nav { flex: 1; padding: 20px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); padding: 8px 12px 6px; margin-top: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 11px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: 13px; font-family: 'Space Grotesk', sans-serif; font-weight: 500; transition: all 0.18s ease; position: relative; }
+  .nav-link .icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-link:hover { background: var(--surface-2); color: var(--text); }
+  .nav-link.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-link.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: var(--accent); border-radius: 0 2px 2px 0; }
+
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: pulse 2s infinite; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .main { margin-left: var(--sidebar-w); flex: 1; padding: 40px; position: relative; z-index: 1; }
+
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 16px; }
+  .page-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .page-header h1 .sub { display: block; font-size: 12px; font-weight: 400; font-family: 'JetBrains Mono', monospace; color: var(--muted); margin-top: 4px; }
+
+  .filter-form { display: flex; align-items: center; gap: 10px; }
+
+  .date-input { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 10px 16px; outline: none; transition: border-color 0.18s; cursor: pointer; }
+  .date-input:focus { border-color: var(--accent); }
+  .date-input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.4); cursor: pointer; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-family: 'Space Grotesk', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.18s; border: none; }
+
+  .btn-primary { background: var(--accent); color: #001018; }
+  .btn-primary:hover { background: #33f0ff; box-shadow: 0 4px 16px var(--accent-glow); }
+
+  .table-container { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; backdrop-filter: blur(12px); }
+
+  .table-header { display: flex; align-items: center; justify-content: space-between; padding: 15px 22px; border-bottom: 1px solid var(--border); }
+  .table-header-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; font-weight: 500; }
+
+  .table-count { background: var(--accent-dim); color: var(--accent); border-radius: 5px; padding: 3px 10px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--surface-2); }
+  thead th { text-align: left; padding: 12px 22px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; font-weight: 500; border-bottom: 1px solid var(--border); }
+
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-2); }
+
+  tbody td { padding: 13px 22px; font-size: 13px; color: var(--text); }
+  tbody td:first-child { color: var(--muted); font-size: 11px; width: 40px; }
+
+  .empty-state { padding: 60px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+  .empty-state .icon { font-size: 34px; display: block; margin-bottom: 14px; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .main > * { animation: fadeUp 0.4s ease both; }
+  .page-header { animation-delay: 0.05s; }
+  .table-container { animation-delay: 0.12s; }
+</style>
+</head>
+<body>
+
+<!-- ✅ EVERYTHING BELOW UNCHANGED -->
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <a href="/" class="logo-mark">
+      <div class="logo-icon">🎯</div>
+      <span class="logo-text">Face<span>Track</span></span>
+    </a>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-label">Main</span>
+    <a href="/" class="nav-link"><span class="icon">⊞</span> Dashboard</a>
+    <a href="/webcam" class="nav-link"><span class="icon">◉</span> Live Webcam</a>
+    <span class="nav-label">Records</span>
+    <a href="/attendance" class="nav-link active"><span class="icon">☰</span> Attendance</a>
+    <a href="/add_student" class="nav-link"><span class="icon">✦</span> Add Student</a>
+  </nav>
+  <div class="sidebar-footer"><span class="status-dot"></span> System active</div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <h1>Attendance<span class="sub"></span></h1>
+    <form method="POST" class="filter-form">
+      <input class="date-input" type="date" name="date">
+      <button class="btn btn-primary" type="submit">Filter →</button>
+    </form>
+  </div>
+
+  <div class="table-container">
+    <div class="table-header">
+      <span class="table-header-title">Records</span>
+      <span class="table-count">{{ data|length if data else 0 }} entries</span>
+    </div>
+    {% if data %}
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          {% for col in data[0] %}<th>Column {{ loop.index }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in data %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          {% for col in row %}<td>{{ col }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <span class="icon">📋</span>
+      No attendance records found.<br>Try selecting a different date.
+    </div>
+    {% endif %}
+  </div>
+</main>
+
+</body>
+</html>

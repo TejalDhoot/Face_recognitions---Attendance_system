@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceTrack — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f14;
+    --surface: rgba(18, 24, 33, 0.6);
+    --surface-2: rgba(24, 33, 44, 0.6);
+    --border: rgba(255,255,255,0.08);
+    --accent: #00e5ff;
+    --accent-dim: rgba(0,229,255,0.12);
+    --accent-glow: rgba(0,229,255,0.35);
+    --text: #e6f1ff;
+    --muted: #7f8fa4;
+    --sidebar-w: 240px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; min-height: 100vh; display: flex; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.013) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.013) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+  .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100; backdrop-filter: blur(12px); }
+
+  .sidebar-logo { padding: 28px 24px 24px; border-bottom: 1px solid var(--border); }
+  .logo-mark { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .logo-text { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); letter-spacing: -0.3px; }
+  .logo-text span { color: var(--accent); }
+
+  .sidebar-nav { flex: 1; padding: 20px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); padding: 8px 12px 6px; margin-top: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 11px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: 13px; transition: all 0.18s ease; position: relative; font-family: 'Space Grotesk', sans-serif; font-weight: 500; }
+  .nav-link .icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-link:hover { background: var(--surface-2); color: var(--text); }
+  .nav-link.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-link.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: var(--accent); border-radius: 0 2px 2px 0; }
+
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: pulse 2s infinite; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .main { margin-left: var(--sidebar-w); flex: 1; padding: 40px; max-width: calc(100vw - var(--sidebar-w)); position: relative; z-index: 1; }
+
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 36px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+  .page-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 700; letter-spacing: -0.8px; line-height: 1.1; }
+  .page-header h1 .sub { display: block; font-size: 12px; font-weight: 400; font-family: 'JetBrains Mono', monospace; color: var(--muted); letter-spacing: 0.3px; margin-top: 5px; }
+
+  .header-badge { background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.25); color: var(--accent); padding: 6px 14px; border-radius: 6px; font-size: 11px; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; gap: 7px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 26px; position: relative; overflow: hidden; transition: border-color 0.2s; backdrop-filter: blur(12px); }
+  .stat-card:hover { border-color: rgba(0,229,255,0.25); }
+  .stat-card::after { content: ''; position: absolute; top: 0; right: 0; width: 60px; height: 60px; background: radial-gradient(circle at top right, var(--accent-dim), transparent 70%); }
+
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); margin-bottom: 10px; font-family: 'Space Grotesk', sans-serif; font-weight: 500; }
+  .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 36px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-value.accent { color: var(--accent); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 16px; font-family: 'Space Grotesk', sans-serif; }
+
+  .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+
+  .action-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; transition: all 0.22s ease; cursor: pointer; position: relative; overflow: hidden; backdrop-filter: blur(12px); }
+  .action-card:hover { border-color: var(--accent); background: var(--surface-2); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,229,255,0.15); }
+
+  .action-card .card-icon { width: 46px; height: 46px; background: var(--accent-dim); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 16px; }
+
+  .action-card h3 { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .action-card p { font-size: 12px; color: var(--muted); line-height: 1.65; }
+
+  .action-card .arrow { position: absolute; top: 28px; right: 28px; font-size: 18px; color: var(--muted); transition: color 0.2s, transform 0.2s; }
+  .action-card:hover .arrow { color: var(--accent); transform: translate(3px, -3px); }
+
+  .action-card a { position: absolute; inset: 0; border-radius: 12px; z-index: 1; }
+
+  .upload-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; backdrop-filter: blur(12px); }
+
+  .upload-section h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 16px; margin-bottom: 18px; }
+
+  .upload-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+  .file-label { display: flex; align-items: center; gap: 10px; background: var(--surface-2); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px; padding: 12px 20px; cursor: pointer; font-size: 12px; color: var(--muted); transition: all 0.18s; flex: 1; min-width: 200px; }
+  .file-label:hover { border-color: var(--accent); color: var(--accent); }
+
+  input[type="file"] { display: none; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 8px; font-size: 13px; font-weight: 500; font-family: 'Space Grotesk', sans-serif; cursor: pointer; transition: all 0.18s; border: none; text-decoration: none; }
+
+  .btn-primary { background: var(--accent); color: #001018; }
+  .btn-primary:hover { background: #33f0ff; box-shadow: 0 6px 20px var(--accent-glow); }
+
+  .prediction-result { margin-top: 20px; padding: 16px 20px; background: var(--accent-dim); border: 1px solid rgba(0,229,255,0.25); border-radius: 10px; font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; color: var(--accent); display: flex; align-items: center; gap: 12px; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .main > * { animation: fadeUp 0.45s ease both; }
+  .page-header { animation-delay: 0.05s; }
+  .stats-grid { animation-delay: 0.1s; }
+  .actions-grid { animation-delay: 0.15s; }
+  .upload-section { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <a href="/" class="logo-mark">
+      <div class="logo-icon">🎯</div>
+      <span class="logo-text">Face<span>Track</span></span>
+    </a>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-label">Main</span>
+    <a href="/" class="nav-link active"><span class="icon">⊞</span> Dashboard</a>
+    <a href="/webcam" class="nav-link"><span class="icon">◉</span> Live Webcam</a>
+    <span class="nav-label">Records</span>
+    <a href="/attendance" class="nav-link"><span class="icon">☰</span> Attendance</a>
+    <a href="/add_student" class="nav-link"><span class="icon">✦</span> Add Student</a>
+  </nav>
+  <div class="sidebar-footer"><span class="status-dot"></span> System active</div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <h1>Dashboard<span class="sub"></span></h1>
+    <div class="header-badge"><span>●</span> LIVE</div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Attendance</div>
+      <div class="stat-value accent">{{ total }}</div>
+      <div class="stat-sub">All-time records logged</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Recognition Mode</div>
+      <div class="stat-value" style="font-size:22px;padding-top:6px">Real-time</div>
+      <div class="stat-sub">Camera feed active</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">System Status</div>
+      <div class="stat-value" style="font-size:20px;color:var(--accent);padding-top:6px">Online</div>
+      <div class="stat-sub">All modules operational</div>
+    </div>
+  </div>
+
+  <div class="section-title">Quick Actions</div>
+  <div class="actions-grid">
+    <div class="action-card">
+      <a href="/webcam"></a>
+      <div class="card-icon">◉</div>
+      <h3>Start Webcam</h3>
+      <p>Launch real-time face recognition via your camera feed.</p>
+      <span class="arrow">↗</span>
+    </div>
+    <div class="action-card">
+      <a href="/add_student"></a>
+      <div class="card-icon">✦</div>
+      <h3>Add Student</h3>
+      <p>Register a new face by capturing via webcam.</p>
+      <span class="arrow">↗</span>
+    </div>
+  </div>
+
+  <div class="upload-section">
+    <h3>📁 Upload Image for Recognition</h3>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+      <div class="upload-row">
+        <label class="file-label" for="img-input">↑ &nbsp; Choose image file...</label>
+        <input type="file" name="image" id="img-input" accept="image/*">
+        <button class="btn btn-primary" type="submit">Analyze →</button>
+      </div>
+    </form>
+    {% if prediction %}
+    <div class="prediction-result">✓ &nbsp; {{ prediction }}</div>
+    {% endif %}
+  </div>
+</main>
+
+<script>
+  document.getElementById('img-input')?.addEventListener('change', function() {
+    const label = document.querySelector('.file-label');
+    if (this.files[0]) {
+      label.textContent = '✓  ' + this.files[0].name;
+      label.style.color = 'var(--accent)';
+      label.style.borderColor = 'var(--accent)';
+    }
+  });
+</script>
+</body>
+</html>

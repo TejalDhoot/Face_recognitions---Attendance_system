@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FaceTrack — Live Webcam</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f14; 
+    --surface: rgba(18, 24, 33, 0.6); 
+    --surface-2: rgba(24, 33, 44, 0.6);
+    --border: rgba(255,255,255,0.08); 
+    --accent: #00e5ff;
+    --accent-dim: rgba(0,229,255,0.12); 
+    --accent-glow: rgba(0,229,255,0.35);
+    --text: #e6f1ff; 
+    --muted: #7f8fa4; 
+    --sidebar-w: 240px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', monospace; min-height: 100vh; display: flex; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.013) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.013) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+  .sidebar { width: var(--sidebar-w); min-height: 100vh; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; z-index: 100; backdrop-filter: blur(12px); }
+
+  .sidebar-logo { padding: 28px 24px 24px; border-bottom: 1px solid var(--border); }
+  .logo-mark { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-icon { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo-text { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 17px; color: var(--text); }
+  .logo-text span { color: var(--accent); }
+
+  .sidebar-nav { flex: 1; padding: 20px 12px; display: flex; flex-direction: column; gap: 2px; }
+  .nav-label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); padding: 8px 12px 6px; margin-top: 8px; }
+  .nav-link { display: flex; align-items: center; gap: 11px; padding: 10px 14px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: 13px; font-family: 'Space Grotesk', sans-serif; font-weight: 500; transition: all 0.18s ease; position: relative; }
+  .nav-link .icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-link:hover { background: var(--surface-2); color: var(--text); }
+  .nav-link.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-link.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: var(--accent); border-radius: 0 2px 2px 0; }
+
+  .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: pulse 2s infinite; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .main { margin-left: var(--sidebar-w); flex: 1; padding: 40px; position: relative; z-index: 1; }
+
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .page-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .page-header h1 .sub { display: block; font-size: 12px; font-weight: 400; font-family: 'JetBrains Mono', monospace; color: var(--muted); margin-top: 4px; }
+
+  .live-badge { display: flex; align-items: center; gap: 8px; background: rgba(0,229,255,0.12); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); padding: 7px 16px; border-radius: 6px; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); animation: pulse 1s infinite; }
+
+  .feed-wrapper { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: start; }
+
+  .feed-container { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; backdrop-filter: blur(12px); }
+
+  .feed-topbar { display: flex; align-items: center; justify-content: space-between; padding: 13px 18px; border-bottom: 1px solid var(--border); }
+  .feed-topbar-left { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .feed-topbar-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+  .feed-body { position: relative; background: #000; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+  .feed-body img { width: 100%; display: block; object-fit: cover; }
+
+  .feed-body::before, .feed-body::after { content: ''; position: absolute; width: 24px; height: 24px; border-color: var(--accent); border-style: solid; z-index: 5; opacity: 0.55; }
+  .feed-body::before { top: 14px; left: 14px; border-width: 2px 0 0 2px; }
+  .feed-body::after { bottom: 14px; right: 14px; border-width: 0 2px 2px 0; }
+
+  .panel { display: flex; flex-direction: column; gap: 14px; }
+
+  .panel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; backdrop-filter: blur(12px); }
+  .panel-card h4 { font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--muted); margin-bottom: 14px; font-family: 'Space Grotesk', sans-serif; font-weight: 500; }
+
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .key { color: var(--muted); }
+  .info-row .val { color: var(--text); }
+  .info-row .val.ok { color: var(--accent); }
+
+  .hint-box { background: var(--surface-2); border: 1px dashed rgba(255,255,255,0.08); border-radius: 10px; padding: 16px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .hint-box strong { display: block; color: var(--text); font-size: 12px; margin-bottom: 8px; font-family: 'Space Grotesk', sans-serif; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .main > * { animation: fadeUp 0.4s ease both; }
+  .page-header { animation-delay: 0.05s; }
+  .feed-wrapper { animation-delay: 0.12s; }
+</style>
+</head>
+<body>
+
+<!-- HTML BELOW 100% SAME -->
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <a href="/" class="logo-mark">
+      <div class="logo-icon">🎯</div>
+      <span class="logo-text">Face<span>Track</span></span>
+    </a>
+  </div>
+  <nav class="sidebar-nav">
+    <span class="nav-label">Main</span>
+    <a href="/" class="nav-link"><span class="icon">⊞</span> Dashboard</a>
+    <a href="/webcam" class="nav-link active"><span class="icon">◉</span> Live Webcam</a>
+    <span class="nav-label">Records</span>
+    <a href="/attendance" class="nav-link"><span class="icon">☰</span> Attendance</a>
+    <a href="/add_student" class="nav-link"><span class="icon">✦</span> Add Student</a>
+  </nav>
+  <div class="sidebar-footer"><span class="status-dot"></span> System active</div>
+</aside>
+
+<main class="main">
+  <div class="page-header">
+    <h1>Live Webcam<span class="sub"></span></h1>
+    <div class="live-badge"><span class="live-dot"></span> REC</div>
+  </div>
+
+  <div class="feed-wrapper">
+    <div class="feed-container">
+      <div class="feed-topbar">
+        <div class="feed-topbar-left"><span class="feed-topbar-dot"></span> Camera Feed — Channel 01</div>
+        <span style="font-size:11px;color:var(--muted)">MJPEG</span>
+      </div>
+      <div class="feed-body">
+        <img src="{{ url_for('video_feed') }}" alt="Live Camera Feed">
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-card">
+        <h4>Stream Info</h4>
+        <div class="info-row"><span class="key">Status</span><span class="val ok">● Active</span></div>
+        <div class="info-row"><span class="key">Mode</span><span class="val">Recognition</span></div>
+        <div class="info-row"><span class="key">Source</span><span class="val">Default Cam</span></div>
+        <div class="info-row"><span class="key">Encoding</span><span class="val">MJPEG</span></div>
+      </div>
+      <div class="hint-box">
+        <strong>🔎 How it works</strong>
+        Faces in the stream are matched against registered students in real-time. Attendance is logged automatically on a match.
+      </div>
+      <div class="panel-card">
+        <h4>Quick Links</h4>
+        <div class="info-row"><a href="/attendance" style="color:var(--accent);text-decoration:none;font-size:12px">View Attendance →</a></div>
+        <div class="info-row"><a href="/add_student" style="color:var(--accent);text-decoration:none;font-size:12px">Register Student →</a></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>
